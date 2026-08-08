@@ -1,7 +1,7 @@
 # TODO
 
  - Add resizing windows
-  - Add maximize and minimize buttons
+   - Add maximize and minimize buttons
  - Add current time and date in the right of the taskbar
  - Add option for outlining the window during resizing or moving
  - Add options file (`options.conf` maybe)
