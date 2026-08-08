@@ -36,6 +36,7 @@ int resize_orig_x = 0, resize_orig_y = 0;
 int resize_orig_w = 0, resize_orig_h = 0;
 int resize_edge = 0;
 Cursor resize_cursor = None;
+Cursor pointer_cursor = None;
 
 MenuItem menu_items[MAX_MENU];
 int menu_count = 0;

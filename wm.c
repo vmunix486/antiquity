@@ -92,6 +92,7 @@ void wm_init(void) {
             XGrabKey(dpy, kc, mods[i], root, True, GrabModeAsync, GrabModeAsync);
 
     resize_cursor = wm_edge_cursor(EDGE_BR);
+    pointer_cursor = XCreateFontCursor(dpy, 68); /* XC_left_ptr */
 }
 
 /* client list */
@@ -503,7 +504,33 @@ void wm_motion(XMotionEvent *e) {
             c = client_by_frame(e->window);
             if (c) {
                 edge = wm_edge_detect(c, wx, wy);
-                wm_set_frame_cursor(c, edge);
+                if (edge) {
+                    wm_set_frame_cursor(c, edge);
+                } else if (wy >= BORDER_W && wy < BORDER_W + TITLE_H) {
+                    /* in title bar - check if over a button */
+                    int bx, by_;
+                    by_ = BORDER_W + (TITLE_H - CLOSE_SZ) / 2;
+                    if (wy >= by_ && wy < by_ + CLOSE_SZ) {
+                        bx = BORDER_W + c->w - CLOSE_SZ - 4;
+                        if (wx >= bx && wx < bx + CLOSE_SZ) {
+                            XDefineCursor(dpy, c->frame, pointer_cursor);
+                            return;
+                        }
+                        bx -= CLOSE_SZ + 2;
+                        if (wx >= bx && wx < bx + CLOSE_SZ) {
+                            XDefineCursor(dpy, c->frame, pointer_cursor);
+                            return;
+                        }
+                        bx -= CLOSE_SZ + 2;
+                        if (wx >= bx && wx < bx + CLOSE_SZ) {
+                            XDefineCursor(dpy, c->frame, pointer_cursor);
+                            return;
+                        }
+                    }
+                    XUndefineCursor(dpy, c->frame);
+                } else {
+                    XUndefineCursor(dpy, c->frame);
+                }
             } else {
                 c = client_by_win(e->window);
                 if (c) {

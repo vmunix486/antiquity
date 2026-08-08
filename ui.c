@@ -152,6 +152,7 @@ void ui_menu_show(void) {
     if (!menu_realized) {
         DBG0("ui_menu_show: first-time realize");
         XtRealizeWidget(menu_shell);
+        XDefineCursor(dpy, XtWindow(menu_shell), pointer_cursor);
         menu_realized = 1;
     }
 

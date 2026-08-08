@@ -7,4 +7,3 @@
  - See if there are any optimizations (it's not slow, it's just that optimization is always good.)
  - Add support for dragging windows around with Alt+Left Mouse
  - Add support for window switching with Alt+Tab
- - Change cursor when hovering over window motifier buttons (currently X cursor, should switch over to pointer cursor when hovering over them). Same for the start menu buttons as well.

@@ -101,6 +101,7 @@ extern int resize_orig_x, resize_orig_y;
 extern int resize_orig_w, resize_orig_h;
 extern int resize_edge;
 extern Cursor resize_cursor;
+extern Cursor pointer_cursor;
 
 /* menu config */
 extern MenuItem menu_items[];
