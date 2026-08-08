@@ -132,6 +132,7 @@ void focus_set(Client *c);
 void focus_clear(Client *c);
 void client_close(Client *c);
 void client_max(Client *c);
+void client_min(Client *c);
 
 /* ui.c */
 void ui_panel(void);

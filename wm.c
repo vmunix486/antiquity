@@ -204,13 +204,32 @@ void frame_draw(Client *c) {
         c->title ? c->title : "(untitled)",
         (int)strlen(c->title ? c->title : "(untitled)"));
 
-    /* close button */
-    bx = c->w - CLOSE_SZ - 4;
+    /* buttons: _ □ X from left to right, right-aligned */
     by = (TITLE_H - CLOSE_SZ) / 2;
+
+    /* close button (rightmost) */
+    bx = c->w - CLOSE_SZ - 4;
     XSetForeground(dpy, gc, c_white);
     XFillRectangle(dpy, c->frame, gc, bx, by, CLOSE_SZ, CLOSE_SZ);
     XSetForeground(dpy, gc, c_black);
     XDrawString(dpy, c->frame, gc, bx + 3, by + font->ascent, "X", 1);
+
+    /* maximize button */
+    bx -= CLOSE_SZ + 2;
+    XSetForeground(dpy, gc, c_white);
+    XFillRectangle(dpy, c->frame, gc, bx, by, CLOSE_SZ, CLOSE_SZ);
+    XSetForeground(dpy, gc, c_black);
+    XDrawRectangle(dpy, c->frame, gc, bx + 3, by + 3,
+        CLOSE_SZ - 7, CLOSE_SZ - 7);
+    XFillRectangle(dpy, c->frame, gc, bx + 3, by + 3,
+        CLOSE_SZ - 7, 2);
+
+    /* minimize button */
+    bx -= CLOSE_SZ + 2;
+    XSetForeground(dpy, gc, c_white);
+    XFillRectangle(dpy, c->frame, gc, bx, by, CLOSE_SZ, CLOSE_SZ);
+    XSetForeground(dpy, gc, c_black);
+    XDrawString(dpy, c->frame, gc, bx + 2, by + font->ascent, "_", 1);
 
     /* bottom line */
     XSetForeground(dpy, gc, c_border);
@@ -234,7 +253,7 @@ void focus_clear(Client *c) {
     if (c) frame_draw(c);
 }
 
-/* close / maximize */
+/* close / maximize / minimize */
 
 void client_close(Client *c) {
     XEvent ev;
@@ -270,6 +289,11 @@ void client_max(Client *c) {
         c->maximized = 1;
     }
     frame_draw(c);
+}
+
+void client_min(Client *c) {
+    if (!c) return;
+    XUnmapWindow(dpy, c->frame);
 }
 
 /* event handlers */
@@ -362,13 +386,31 @@ void wm_btn(XButtonEvent *e) {
     }
 
     if (e->y < TITLE_H) {
-        int bx = c->w - CLOSE_SZ - 4;
-        int by = (TITLE_H - CLOSE_SZ) / 2;
+        int bx, by;
+        by = (TITLE_H - CLOSE_SZ) / 2;
+
+        /* close button (rightmost) */
+        bx = c->w - CLOSE_SZ - 4;
         if (e->x >= bx && e->x < bx + CLOSE_SZ &&
             e->y >= by && e->y < by + CLOSE_SZ) {
             client_close(c);
             return;
         }
+        /* maximize button */
+        bx -= CLOSE_SZ + 2;
+        if (e->x >= bx && e->x < bx + CLOSE_SZ &&
+            e->y >= by && e->y < by + CLOSE_SZ) {
+            client_max(c);
+            return;
+        }
+        /* minimize button */
+        bx -= CLOSE_SZ + 2;
+        if (e->x >= bx && e->x < bx + CLOSE_SZ &&
+            e->y >= by && e->y < by + CLOSE_SZ) {
+            client_min(c);
+            return;
+        }
+
         /* title bar click starts move drag */
         dragging = 1;
         drag_c = c;

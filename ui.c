@@ -287,7 +287,11 @@ static void start_cb(Widget w, XtPointer cd, XtPointer cal) {
 static void win_btn_cb(Widget w, XtPointer cd, XtPointer cal) {
     Client *c = (Client *)cd;
     (void)w; (void)cal;
-    if (c) { focus_set(c); XRaiseWindow(dpy, c->frame); }
+    if (c) {
+        XRaiseWindow(dpy, c->frame);
+        XMapWindow(dpy, c->frame);
+        focus_set(c);
+    }
 }
 
 void ui_panel(void) {
