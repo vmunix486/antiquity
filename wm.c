@@ -18,20 +18,20 @@ static int casc_x = 40, casc_y = 40;
 
 /* top edge gets a smaller threshold so title bar dragging isn't interrupted */
 #define EDGE_TOP_TZ   4
-#define EDGE_OTHER_TZ 16
+#define EDGE_OTHER_TZ BORDER_W
 
 static Cursor wm_edge_cursor(int edge) {
     unsigned int shape;
     switch (edge) {
-    case EDGE_LEFT:  shape = 108; break;
-    case EDGE_RIGHT: shape = 106; break;
-    case EDGE_TOP:   shape = 104; break;
-    case EDGE_BOT:   shape = 102; break;
-    case EDGE_TL:    shape = 134; break;
-    case EDGE_TR:    shape = 136; break;
-    case EDGE_BL:    shape = 138; break;
-    case EDGE_BR:    shape = 144; break;
-    default:         shape = 68;  break;
+    case EDGE_LEFT:  shape = 70;  break; /* XC_left_side */
+    case EDGE_RIGHT: shape = 96;  break; /* XC_right_side */
+    case EDGE_TOP:   shape = 138; break; /* XC_top_side */
+    case EDGE_BOT:   shape = 16;  break; /* XC_bottom_side */
+    case EDGE_TL:    shape = 134; break; /* XC_top_left_corner */
+    case EDGE_TR:    shape = 136; break; /* XC_top_right_corner */
+    case EDGE_BL:    shape = 12;  break; /* XC_bottom_left_corner */
+    case EDGE_BR:    shape = 14;  break; /* XC_bottom_right_corner */
+    default:         shape = 68;  break; /* XC_left_ptr */
     }
     return XCreateFontCursor(dpy, shape);
 }
@@ -56,12 +56,11 @@ static int wm_edge_from_client(Client *c, int wx, int wy) {
     if (!c) return EDGE_NONE;
     edge = EDGE_NONE;
     tz = EDGE_OTHER_TZ;
-    /* client window has BORDER_W pixels of border on all sides,
-     * content area starts at (BORDER_W, BORDER_W) in client coords */
-    if (wx < BORDER_W + tz) edge |= EDGE_LEFT;
-    else if (wx >= BORDER_W + c->w - tz) edge |= EDGE_RIGHT;
-    if (wy < BORDER_W + tz) edge |= EDGE_TOP;
-    else if (wy >= BORDER_W + c->h - tz) edge |= EDGE_BOT;
+    /* client has 0 border, content area: x in [0, c->w], y in [0, c->h] */
+    if (wx < tz) edge |= EDGE_LEFT;
+    else if (wx >= c->w - tz) edge |= EDGE_RIGHT;
+    if (wy < tz) edge |= EDGE_TOP;
+    else if (wy >= c->h - tz) edge |= EDGE_BOT;
     return edge;
 }
 
@@ -139,10 +138,13 @@ Client *client_add(Window w) {
     c->maximized = 0;
 
     c->frame = XCreateSimpleWindow(dpy, root, c->x, c->y,
-        c->w, c->h + TITLE_H, BORDER_W, c_border, c_panel_bg);
+        c->w + 2 * BORDER_W, c->h + TITLE_H + 2 * BORDER_W,
+        0, c_border, c_panel_bg);
     XSelectInput(dpy, c->frame, ExposureMask | ButtonPressMask | ButtonReleaseMask |
                  PointerMotionMask | SubstructureNotifyMask);
-    XReparentWindow(dpy, w, c->frame, 0, TITLE_H);
+    /* set client border to 0 so frame borders handle all edge input */
+    XSetWindowBorderWidth(dpy, w, 0);
+    XReparentWindow(dpy, w, c->frame, BORDER_W, BORDER_W + TITLE_H);
     XMapWindow(dpy, w);
     XMapWindow(dpy, c->frame);
 
@@ -188,27 +190,36 @@ void frame_draw(Client *c) {
     int focused_;
     int bx, by;
     int pad;
+    int fw, fh;
 
     if (!c || c->frame == None) return;
     focused_ = (focused == c);
 
-    /* title bar bg */
+    /* full frame dimensions (content area, no X border) */
+    fw = c->w + 2 * BORDER_W;
+    fh = c->h + TITLE_H + 2 * BORDER_W;
+
+    /* fill entire frame with border color - this IS the single border */
+    XSetForeground(dpy, gc, c_border);
+    XFillRectangle(dpy, c->frame, gc, 0, 0, fw, fh);
+
+    /* title bar bg - inset by BORDER_W so border shows on all sides */
     XSetForeground(dpy, gc, focused_ ? c_title_on : c_title_off);
-    XFillRectangle(dpy, c->frame, gc, 0, 0, c->w, TITLE_H);
+    XFillRectangle(dpy, c->frame, gc, BORDER_W, BORDER_W, c->w, TITLE_H);
 
     /* title text */
     XSetForeground(dpy, gc, focused_ ? c_title_fg : c_black);
-    pad = CLOSE_SZ + 8;
+    pad = BORDER_W + CLOSE_SZ + 8;
     XDrawString(dpy, c->frame, gc, pad,
-        (TITLE_H - font->ascent) / 2 + font->ascent,
+        BORDER_W + (TITLE_H - font->ascent) / 2 + font->ascent,
         c->title ? c->title : "(untitled)",
         (int)strlen(c->title ? c->title : "(untitled)"));
 
     /* buttons: _ □ X from left to right, right-aligned */
-    by = (TITLE_H - CLOSE_SZ) / 2;
+    by = BORDER_W + (TITLE_H - CLOSE_SZ) / 2;
 
     /* close button (rightmost) */
-    bx = c->w - CLOSE_SZ - 4;
+    bx = BORDER_W + c->w - CLOSE_SZ - 4;
     XSetForeground(dpy, gc, c_white);
     XFillRectangle(dpy, c->frame, gc, bx, by, CLOSE_SZ, CLOSE_SZ);
     XSetForeground(dpy, gc, c_black);
@@ -230,10 +241,6 @@ void frame_draw(Client *c) {
     XFillRectangle(dpy, c->frame, gc, bx, by, CLOSE_SZ, CLOSE_SZ);
     XSetForeground(dpy, gc, c_black);
     XDrawString(dpy, c->frame, gc, bx + 2, by + font->ascent, "_", 1);
-
-    /* bottom line */
-    XSetForeground(dpy, gc, c_border);
-    XDrawLine(dpy, c->frame, gc, 0, TITLE_H - 1, c->w, TITLE_H - 1);
 }
 
 /* focus */
@@ -276,16 +283,17 @@ void client_max(Client *c) {
     if (!c) return;
     if (c->maximized) {
         XMoveResizeWindow(dpy, c->frame, c->ox, c->oy,
-            c->ow, c->oh + TITLE_H);
-        XMoveResizeWindow(dpy, c->win, 0, TITLE_H, c->ow, c->oh);
+            c->ow + 2 * BORDER_W, c->oh + TITLE_H + 2 * BORDER_W);
+        XMoveResizeWindow(dpy, c->win, BORDER_W, TITLE_H + BORDER_W, c->ow, c->oh);
         c->x = c->ox; c->y = c->oy; c->w = c->ow; c->h = c->oh;
         c->maximized = 0;
     } else {
         c->ox = c->x; c->oy = c->y; c->ow = c->w; c->oh = c->h;
-        c->w = sw; c->h = sh - PANEL_H;
+        c->w = sw - 2 * BORDER_W;
+        c->h = sh - PANEL_H - TITLE_H - 2 * BORDER_W;
         c->x = 0; c->y = 0;
         XMoveResizeWindow(dpy, c->frame, 0, 0, sw, sh - PANEL_H);
-        XMoveResizeWindow(dpy, c->win, 0, TITLE_H, sw, sh - PANEL_H - TITLE_H);
+        XMoveResizeWindow(dpy, c->win, BORDER_W, TITLE_H + BORDER_W, c->w, c->h);
         c->maximized = 1;
     }
     frame_draw(c);
@@ -452,7 +460,8 @@ void wm_motion(XMotionEvent *e) {
         if (nw < MIN_W) { nw = MIN_W; if (resize_edge & EDGE_LEFT) nx = resize_orig_x + resize_orig_w - MIN_W; }
         if (nh < MIN_H) { nh = MIN_H; if (resize_edge & EDGE_TOP) ny = resize_orig_y + resize_orig_h - MIN_H; }
         c->w = nw; c->h = nh; c->x = nx; c->y = ny;
-        XMoveResizeWindow(dpy, c->frame, nx, ny, nw, nh + TITLE_H);
+        XMoveResizeWindow(dpy, c->frame, nx, ny,
+            nw + 2 * BORDER_W, nh + TITLE_H + 2 * BORDER_W);
         XResizeWindow(dpy, c->win, nw, nh);
         frame_draw(c);
     } else if (dragging && drag_c) {

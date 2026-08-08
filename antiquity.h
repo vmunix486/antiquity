@@ -32,7 +32,7 @@
 
 #define PANEL_H      30
 #define TITLE_H      20
-#define BORDER_W     2
+#define BORDER_W     4
 #define CLOSE_SZ     14
 #define MAX_MENU     32
 #define MAX_LINE     256
