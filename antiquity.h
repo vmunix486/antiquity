@@ -38,6 +38,8 @@
 #define MAX_LINE     256
 #define MAX_NAME     64
 #define MAX_CMD      128
+#define MIN_W        100
+#define MIN_H        60
 
 #ifdef _DEBUG
 #define DBG0(msg)          fprintf(stderr, "DBG: " msg "\n")
@@ -89,10 +91,16 @@ extern int menu_up;
 extern Widget lsh_shell, lsh_text;
 extern int lsh_up;
 
-/* move state */
+/* drag/resize state */
 extern int dragging;
+extern int resizing;
 extern Client *drag_c;
 extern int drag_ox, drag_oy;
+extern int resize_start_x, resize_start_y;
+extern int resize_orig_x, resize_orig_y;
+extern int resize_orig_w, resize_orig_h;
+extern int resize_edge;
+extern Cursor resize_cursor;
 
 /* menu config */
 extern MenuItem menu_items[];

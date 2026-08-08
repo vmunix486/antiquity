@@ -28,8 +28,14 @@ Widget lsh_shell, lsh_text;
 int lsh_up = 0;
 
 int dragging = 0;
+int resizing = 0;
 Client *drag_c = NULL;
 int drag_ox = 0, drag_oy = 0;
+int resize_start_x = 0, resize_start_y = 0;
+int resize_orig_x = 0, resize_orig_y = 0;
+int resize_orig_w = 0, resize_orig_h = 0;
+int resize_edge = 0;
+Cursor resize_cursor = None;
 
 MenuItem menu_items[MAX_MENU];
 int menu_count = 0;

@@ -6,6 +6,76 @@
 
 static int casc_x = 40, casc_y = 40;
 
+#define EDGE_NONE  0
+#define EDGE_LEFT  1
+#define EDGE_RIGHT 2
+#define EDGE_TOP   4
+#define EDGE_BOT   8
+#define EDGE_TL    (EDGE_TOP|EDGE_LEFT)
+#define EDGE_TR    (EDGE_TOP|EDGE_RIGHT)
+#define EDGE_BL    (EDGE_BOT|EDGE_LEFT)
+#define EDGE_BR    (EDGE_BOT|EDGE_RIGHT)
+
+/* top edge gets a smaller threshold so title bar dragging isn't interrupted */
+#define EDGE_TOP_TZ   4
+#define EDGE_OTHER_TZ 16
+
+static Cursor wm_edge_cursor(int edge) {
+    unsigned int shape;
+    switch (edge) {
+    case EDGE_LEFT:  shape = 108; break;
+    case EDGE_RIGHT: shape = 106; break;
+    case EDGE_TOP:   shape = 104; break;
+    case EDGE_BOT:   shape = 102; break;
+    case EDGE_TL:    shape = 134; break;
+    case EDGE_TR:    shape = 136; break;
+    case EDGE_BL:    shape = 138; break;
+    case EDGE_BR:    shape = 144; break;
+    default:         shape = 68;  break;
+    }
+    return XCreateFontCursor(dpy, shape);
+}
+
+static int wm_edge_detect(Client *c, int mx, int my) {
+    int fw, fh, edge;
+    if (!c) return EDGE_NONE;
+    fw = c->w + 2 * BORDER_W;
+    fh = c->h + TITLE_H + 2 * BORDER_W;
+    edge = EDGE_NONE;
+    if (mx < EDGE_OTHER_TZ) edge |= EDGE_LEFT;
+    else if (mx >= fw - EDGE_OTHER_TZ) edge |= EDGE_RIGHT;
+    /* top uses a smaller threshold to avoid interfering with title bar clicks */
+    if (my < EDGE_TOP_TZ) edge |= EDGE_TOP;
+    else if (my >= fh - EDGE_OTHER_TZ) edge |= EDGE_BOT;
+    return edge;
+}
+
+/* detect edge from client-relative coordinates */
+static int wm_edge_from_client(Client *c, int wx, int wy) {
+    int edge, tz;
+    if (!c) return EDGE_NONE;
+    edge = EDGE_NONE;
+    tz = EDGE_OTHER_TZ;
+    /* client window has BORDER_W pixels of border on all sides,
+     * content area starts at (BORDER_W, BORDER_W) in client coords */
+    if (wx < BORDER_W + tz) edge |= EDGE_LEFT;
+    else if (wx >= BORDER_W + c->w - tz) edge |= EDGE_RIGHT;
+    if (wy < BORDER_W + tz) edge |= EDGE_TOP;
+    else if (wy >= BORDER_W + c->h - tz) edge |= EDGE_BOT;
+    return edge;
+}
+
+static void wm_set_frame_cursor(Client *c, int edge) {
+    Cursor cur;
+    if (edge == EDGE_NONE) {
+        XUndefineCursor(dpy, c->frame);
+    } else {
+        cur = wm_edge_cursor(edge);
+        XDefineCursor(dpy, c->frame, cur);
+        XFreeCursor(dpy, cur);
+    }
+}
+
 void wm_init(void) {
     unsigned int mods[4] = {0, LockMask, Mod2Mask, LockMask|Mod2Mask};
     KeyCode kc;
@@ -21,6 +91,8 @@ void wm_init(void) {
     if (kc)
         for (i = 0; i < 4; i++)
             XGrabKey(dpy, kc, mods[i], root, True, GrabModeAsync, GrabModeAsync);
+
+    resize_cursor = wm_edge_cursor(EDGE_BR);
 }
 
 /* client list */
@@ -69,7 +141,7 @@ Client *client_add(Window w) {
     c->frame = XCreateSimpleWindow(dpy, root, c->x, c->y,
         c->w, c->h + TITLE_H, BORDER_W, c_border, c_panel_bg);
     XSelectInput(dpy, c->frame, ExposureMask | ButtonPressMask | ButtonReleaseMask |
-                 SubstructureNotifyMask);
+                 PointerMotionMask | SubstructureNotifyMask);
     XReparentWindow(dpy, w, c->frame, 0, TITLE_H);
     XMapWindow(dpy, w);
     XMapWindow(dpy, c->frame);
@@ -256,6 +328,7 @@ void wm_key(XKeyEvent *e) {
 
 void wm_btn(XButtonEvent *e) {
     Client *c;
+    int edge;
 
     /* if start menu is open, let Xt dispatch handle item clicks,
      * dismiss if click is outside menu */
@@ -268,6 +341,26 @@ void wm_btn(XButtonEvent *e) {
     c = client_by_frame(e->window);
     if (!c) return;
     focus_set(c);
+
+    /* check for resize edge/corner anywhere in the frame */
+    edge = wm_edge_detect(c, e->x, e->y);
+    if (edge) {
+        resizing = 1;
+        drag_c = c;
+        resize_edge = edge;
+        resize_start_x = e->x_root;
+        resize_start_y = e->y_root;
+        resize_orig_x = c->x;
+        resize_orig_y = c->y;
+        resize_orig_w = c->w;
+        resize_orig_h = c->h;
+        XGrabPointer(dpy, c->frame, True,
+            ButtonReleaseMask | PointerMotionMask,
+            GrabModeAsync, GrabModeAsync,
+            wm_edge_cursor(edge), None, CurrentTime);
+        return;
+    }
+
     if (e->y < TITLE_H) {
         int bx = c->w - CLOSE_SZ - 4;
         int by = (TITLE_H - CLOSE_SZ) / 2;
@@ -276,8 +369,7 @@ void wm_btn(XButtonEvent *e) {
             client_close(c);
             return;
         }
-        /* double-click maximizes */
-        /* single click starts drag */
+        /* title bar click starts move drag */
         dragging = 1;
         drag_c = c;
         drag_ox = e->x_root - c->x;
@@ -290,10 +382,94 @@ void wm_btn(XButtonEvent *e) {
 
 void wm_motion(XMotionEvent *e) {
     XEvent dum;
-    if (!dragging || !drag_c) return;
-    drag_c->x = e->x_root - drag_ox;
-    drag_c->y = e->y_root - drag_oy;
-    XMoveWindow(dpy, drag_c->frame, drag_c->x, drag_c->y);
+    int nw, nh, nx, ny;
+    Window rw, cr;
+    int rx, ry, wx, wy;
+    unsigned int mask;
+    Client *c;
+    int edge;
+
+    if (resizing && drag_c) {
+        c = drag_c;
+        nw = resize_orig_w;
+        nh = resize_orig_h;
+        nx = resize_orig_x;
+        ny = resize_orig_y;
+        if (resize_edge & EDGE_RIGHT)
+            nw = resize_orig_w + (e->x_root - resize_start_x);
+        if (resize_edge & EDGE_BOT)
+            nh = resize_orig_h + (e->y_root - resize_start_y);
+        if (resize_edge & EDGE_LEFT) {
+            nw = resize_orig_w - (e->x_root - resize_start_x);
+            nx = resize_orig_x + (e->x_root - resize_start_x);
+        }
+        if (resize_edge & EDGE_TOP) {
+            nh = resize_orig_h - (e->y_root - resize_start_y);
+            ny = resize_orig_y + (e->y_root - resize_start_y);
+        }
+        if (nw < MIN_W) { nw = MIN_W; if (resize_edge & EDGE_LEFT) nx = resize_orig_x + resize_orig_w - MIN_W; }
+        if (nh < MIN_H) { nh = MIN_H; if (resize_edge & EDGE_TOP) ny = resize_orig_y + resize_orig_h - MIN_H; }
+        c->w = nw; c->h = nh; c->x = nx; c->y = ny;
+        XMoveResizeWindow(dpy, c->frame, nx, ny, nw, nh + TITLE_H);
+        XResizeWindow(dpy, c->win, nw, nh);
+        frame_draw(c);
+    } else if (dragging && drag_c) {
+        drag_c->x = e->x_root - drag_ox;
+        drag_c->y = e->y_root - drag_oy;
+        XMoveWindow(dpy, drag_c->frame, drag_c->x, drag_c->y);
+    }
+
+    /* when button is held and pointer is near a client edge, start resize */
+    if (!dragging && !resizing) {
+        if (XQueryPointer(dpy, e->window, &rw, &cr, &rx, &ry, &wx, &wy, &mask)) {
+            if (mask & Button1Mask) {
+                c = client_by_frame(e->window);
+                if (c) edge = wm_edge_detect(c, wx, wy);
+                else {
+                    c = client_by_win(e->window);
+                    if (c) edge = wm_edge_from_client(c, wx, wy);
+                    else edge = EDGE_NONE;
+                }
+                if (c && edge) {
+                    resizing = 1;
+                    drag_c = c;
+                    resize_edge = edge;
+                    resize_start_x = e->x_root;
+                    resize_start_y = e->y_root;
+                    resize_orig_x = c->x;
+                    resize_orig_y = c->y;
+                    resize_orig_w = c->w;
+                    resize_orig_h = c->h;
+                    XGrabPointer(dpy, c->frame, True,
+                        ButtonReleaseMask | PointerMotionMask,
+                        GrabModeAsync, GrabModeAsync,
+                        wm_edge_cursor(edge), None, CurrentTime);
+                    return;
+                }
+            }
+
+            /* update cursor on hover (only when no grab is active) */
+            c = client_by_frame(e->window);
+            if (c) {
+                edge = wm_edge_detect(c, wx, wy);
+                wm_set_frame_cursor(c, edge);
+            } else {
+                c = client_by_win(e->window);
+                if (c) {
+                    edge = wm_edge_from_client(c, wx, wy);
+                    /* set cursor on the client window, not the frame */
+                    if (edge == EDGE_NONE)
+                        XUndefineCursor(dpy, c->win);
+                    else {
+                        Cursor cur = wm_edge_cursor(edge);
+                        XDefineCursor(dpy, c->win, cur);
+                        XFreeCursor(dpy, cur);
+                    }
+                }
+            }
+        }
+    }
+
     /* drain motion events for smoothness */
     while (XPending(dpy)) {
         XPeekEvent(dpy, &dum);
@@ -304,7 +480,12 @@ void wm_motion(XMotionEvent *e) {
 
 void wm_btnup(XButtonEvent *e) {
     (void)e;
-    if (dragging) {
+    if (resizing) {
+        resizing = 0;
+        resize_edge = EDGE_NONE;
+        drag_c = NULL;
+        XUngrabPointer(dpy, CurrentTime);
+    } else if (dragging) {
         dragging = 0;
         drag_c = NULL;
         XUngrabPointer(dpy, CurrentTime);
@@ -313,9 +494,20 @@ void wm_btnup(XButtonEvent *e) {
 
 void wm_expose(XExposeEvent *e) {
     Client *c;
+    Window rw, cr;
+    int rx, ry, wx, wy;
+    unsigned int mask;
+    int edge;
+
     if (e->count > 0) return;
     c = client_by_frame(e->window);
-    if (c) frame_draw(c);
+    if (!c) return;
+    frame_draw(c);
+    /* set cursor based on pointer position */
+    if (XQueryPointer(dpy, c->frame, &rw, &cr, &rx, &ry, &wx, &wy, &mask)) {
+        edge = wm_edge_detect(c, wx, wy);
+        wm_set_frame_cursor(c, edge);
+    }
 }
 
 void wm_prop(XPropertyEvent *e) {

@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -std=c89 -pedantic -Wall -I/usr/X11R7/include -I/usr/X11/include
-LDFLAGS = -L/usr/X11/lib64
+CFLAGS = -std=c89 -pedantic -Wall -I/usr/X11R7/include -I/usr/X11/include -Ofast
+LDFLAGS = -L/usr/X11/lib64 -flto
 LIBS = -lXaw -lXt -lXmu -lX11
 
 SRCS = main.c wm.c ui.c
