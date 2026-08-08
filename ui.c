@@ -72,6 +72,60 @@ void menu_load(const char *path) {
     DBG("menu_load: done, menu_count=%d", menu_count);
 }
 
+void options_load(const char *path) {
+    FILE *f;
+    char line[MAX_LINE];
+    int in_options = 0;
+    char *home;
+    char buf[512];
+    const char *p = path;
+
+    if (p[0] == '~' && p[1] == '/') {
+        home = getenv("HOME");
+        if (home) {
+            sprintf(buf, "%s%s", home, p + 1);
+            p = buf;
+        }
+    }
+
+    f = fopen(p, "r");
+    if (!f) return;
+
+    while (fgets(line, sizeof(line), f)) {
+        char *s = line, *eq;
+        while (*s == ' ' || *s == '\t') s++;
+        if (*s == '\n' || *s == '\0' || *s == '#' || *s == ';') continue;
+        if (*s == '[') {
+            in_options = (strncmp(s, "[options]", 9) == 0);
+            continue;
+        }
+        if (!in_options) continue;
+        eq = strchr(s, '=');
+        if (!eq) continue;
+        {
+            char key[MAX_NAME] = {0};
+            char val[MAX_CMD] = {0};
+            char *a = s, *b = eq + 1;
+            int i = 0;
+            while (a < eq && *a != ' ' && *a != '\t' && i < MAX_NAME - 1)
+                key[i++] = *a++;
+            i = 0;
+            while (*b == ' ' || *b == '\t') b++;
+            while (*b && *b != '\n' && *b != '\r' && i < MAX_CMD - 1)
+                val[i++] = *b++;
+            while (i > 0 && (val[i-1] == ' ' || val[i-1] == '\t'))
+                val[--i] = '\0';
+            if (strcmp(key, "border_width") == 0) settings.border_w = atoi(val);
+            else if (strcmp(key, "title_height") == 0) settings.title_h = atoi(val);
+            else if (strcmp(key, "panel_height") == 0) settings.panel_h = atoi(val);
+            else if (strcmp(key, "close_button_size") == 0) settings.close_sz = atoi(val);
+            else if (strcmp(key, "min_width") == 0) settings.min_w = atoi(val);
+            else if (strcmp(key, "min_height") == 0) settings.min_h = atoi(val);
+        }
+    }
+    fclose(f);
+}
+
 /* --- start menu --- */
 
 static void menu_cb(Widget w, XtPointer client_data, XtPointer call_data) {
@@ -300,9 +354,9 @@ void ui_panel(void) {
         overrideShellWidgetClass, dpy,
         XtNoverrideRedirect, True,
         XtNwidth, sw,
-        XtNheight, PANEL_H,
+        XtNheight, settings.panel_h,
         XtNx, 0,
-        XtNy, sh - PANEL_H,
+        XtNy, sh - settings.panel_h,
         XtNbackground, c_panel_bg,
         NULL);
 

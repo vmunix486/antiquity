@@ -18,7 +18,7 @@ static int casc_x = 40, casc_y = 40;
 
 /* top edge gets a smaller threshold so title bar dragging isn't interrupted */
 #define EDGE_TOP_TZ   4
-#define EDGE_OTHER_TZ BORDER_W
+#define EDGE_OTHER_TZ settings.border_w
 
 static Cursor wm_edge_cursor(int edge) {
     unsigned int shape;
@@ -39,8 +39,8 @@ static Cursor wm_edge_cursor(int edge) {
 static int wm_edge_detect(Client *c, int mx, int my) {
     int fw, fh, edge;
     if (!c) return EDGE_NONE;
-    fw = c->w + 2 * BORDER_W;
-    fh = c->h + TITLE_H + 2 * BORDER_W;
+    fw = c->w + 2 * settings.border_w;
+    fh = c->h + settings.title_h + 2 * settings.border_w;
     edge = EDGE_NONE;
     if (mx < EDGE_OTHER_TZ) edge |= EDGE_LEFT;
     else if (mx >= fw - EDGE_OTHER_TZ) edge |= EDGE_RIGHT;
@@ -134,18 +134,18 @@ Client *client_add(Window w) {
     c->x = casc_x; c->y = casc_y;
     casc_x += 28; casc_y += 28;
     if (casc_x + c->w > sw) casc_x = 40;
-    if (casc_y + c->h > sh - PANEL_H) casc_y = 40;
+    if (casc_y + c->h > sh - settings.panel_h) casc_y = 40;
     c->ox = c->x; c->oy = c->y; c->ow = c->w; c->oh = c->h;
     c->maximized = 0;
 
     c->frame = XCreateSimpleWindow(dpy, root, c->x, c->y,
-        c->w + 2 * BORDER_W, c->h + TITLE_H + 2 * BORDER_W,
+        c->w + 2 * settings.border_w, c->h + settings.title_h + 2 * settings.border_w,
         0, c_border, c_panel_bg);
     XSelectInput(dpy, c->frame, ExposureMask | ButtonPressMask | ButtonReleaseMask |
                  PointerMotionMask | SubstructureNotifyMask);
     /* set client border to 0 so frame borders handle all edge input */
     XSetWindowBorderWidth(dpy, w, 0);
-    XReparentWindow(dpy, w, c->frame, BORDER_W, BORDER_W + TITLE_H);
+    XReparentWindow(dpy, w, c->frame, settings.border_w, settings.border_w + settings.title_h);
     XMapWindow(dpy, w);
     XMapWindow(dpy, c->frame);
 
@@ -197,49 +197,49 @@ void frame_draw(Client *c) {
     focused_ = (focused == c);
 
     /* full frame dimensions (content area, no X border) */
-    fw = c->w + 2 * BORDER_W;
-    fh = c->h + TITLE_H + 2 * BORDER_W;
+    fw = c->w + 2 * settings.border_w;
+    fh = c->h + settings.title_h + 2 * settings.border_w;
 
     /* fill entire frame with border color - this IS the single border */
     XSetForeground(dpy, gc, c_border);
     XFillRectangle(dpy, c->frame, gc, 0, 0, fw, fh);
 
-    /* title bar bg - inset by BORDER_W so border shows on all sides */
+    /* title bar bg - inset by settings.border_w so border shows on all sides */
     XSetForeground(dpy, gc, focused_ ? c_title_on : c_title_off);
-    XFillRectangle(dpy, c->frame, gc, BORDER_W, BORDER_W, c->w, TITLE_H);
+    XFillRectangle(dpy, c->frame, gc, settings.border_w, settings.border_w, c->w, settings.title_h);
 
     /* title text */
     XSetForeground(dpy, gc, focused_ ? c_title_fg : c_black);
-    pad = BORDER_W + CLOSE_SZ + 8;
+    pad = settings.border_w + settings.close_sz + 8;
     XDrawString(dpy, c->frame, gc, pad,
-        BORDER_W + (TITLE_H - font->ascent) / 2 + font->ascent,
+        settings.border_w + (settings.title_h - font->ascent) / 2 + font->ascent,
         c->title ? c->title : "(untitled)",
         (int)strlen(c->title ? c->title : "(untitled)"));
 
     /* buttons: _ □ X from left to right, right-aligned */
-    by = BORDER_W + (TITLE_H - CLOSE_SZ) / 2;
+    by = settings.border_w + (settings.title_h - settings.close_sz) / 2;
 
     /* close button (rightmost) */
-    bx = BORDER_W + c->w - CLOSE_SZ - 4;
+    bx = settings.border_w + c->w - settings.close_sz - 4;
     XSetForeground(dpy, gc, c_white);
-    XFillRectangle(dpy, c->frame, gc, bx, by, CLOSE_SZ, CLOSE_SZ);
+    XFillRectangle(dpy, c->frame, gc, bx, by, settings.close_sz, settings.close_sz);
     XSetForeground(dpy, gc, c_black);
     XDrawString(dpy, c->frame, gc, bx + 3, by + font->ascent, "X", 1);
 
     /* maximize button */
-    bx -= CLOSE_SZ + 2;
+    bx -= settings.close_sz + 2;
     XSetForeground(dpy, gc, c_white);
-    XFillRectangle(dpy, c->frame, gc, bx, by, CLOSE_SZ, CLOSE_SZ);
+    XFillRectangle(dpy, c->frame, gc, bx, by, settings.close_sz, settings.close_sz);
     XSetForeground(dpy, gc, c_black);
     XDrawRectangle(dpy, c->frame, gc, bx + 3, by + 3,
-        CLOSE_SZ - 7, CLOSE_SZ - 7);
+        settings.close_sz - 7, settings.close_sz - 7);
     XFillRectangle(dpy, c->frame, gc, bx + 3, by + 3,
-        CLOSE_SZ - 7, 2);
+        settings.close_sz - 7, 2);
 
     /* minimize button */
-    bx -= CLOSE_SZ + 2;
+    bx -= settings.close_sz + 2;
     XSetForeground(dpy, gc, c_white);
-    XFillRectangle(dpy, c->frame, gc, bx, by, CLOSE_SZ, CLOSE_SZ);
+    XFillRectangle(dpy, c->frame, gc, bx, by, settings.close_sz, settings.close_sz);
     XSetForeground(dpy, gc, c_black);
     XDrawString(dpy, c->frame, gc, bx + 2, by + font->ascent, "_", 1);
 }
@@ -284,17 +284,17 @@ void client_max(Client *c) {
     if (!c) return;
     if (c->maximized) {
         XMoveResizeWindow(dpy, c->frame, c->ox, c->oy,
-            c->ow + 2 * BORDER_W, c->oh + TITLE_H + 2 * BORDER_W);
-        XMoveResizeWindow(dpy, c->win, BORDER_W, TITLE_H + BORDER_W, c->ow, c->oh);
+            c->ow + 2 * settings.border_w, c->oh + settings.title_h + 2 * settings.border_w);
+        XMoveResizeWindow(dpy, c->win, settings.border_w, settings.title_h + settings.border_w, c->ow, c->oh);
         c->x = c->ox; c->y = c->oy; c->w = c->ow; c->h = c->oh;
         c->maximized = 0;
     } else {
         c->ox = c->x; c->oy = c->y; c->ow = c->w; c->oh = c->h;
-        c->w = sw - 2 * BORDER_W;
-        c->h = sh - PANEL_H - TITLE_H - 2 * BORDER_W;
+        c->w = sw - 2 * settings.border_w;
+        c->h = sh - settings.panel_h - settings.title_h - 2 * settings.border_w;
         c->x = 0; c->y = 0;
-        XMoveResizeWindow(dpy, c->frame, 0, 0, sw, sh - PANEL_H);
-        XMoveResizeWindow(dpy, c->win, BORDER_W, TITLE_H + BORDER_W, c->w, c->h);
+        XMoveResizeWindow(dpy, c->frame, 0, 0, sw, sh - settings.panel_h);
+        XMoveResizeWindow(dpy, c->win, settings.border_w, settings.title_h + settings.border_w, c->w, c->h);
         c->maximized = 1;
     }
     frame_draw(c);
@@ -394,28 +394,28 @@ void wm_btn(XButtonEvent *e) {
         return;
     }
 
-    if (e->y < TITLE_H) {
+    if (e->y < settings.title_h) {
         int bx, by;
-        by = (TITLE_H - CLOSE_SZ) / 2;
+        by = (settings.title_h - settings.close_sz) / 2;
 
         /* close button (rightmost) */
-        bx = c->w - CLOSE_SZ - 4;
-        if (e->x >= bx && e->x < bx + CLOSE_SZ &&
-            e->y >= by && e->y < by + CLOSE_SZ) {
+        bx = c->w - settings.close_sz - 4;
+        if (e->x >= bx && e->x < bx + settings.close_sz &&
+            e->y >= by && e->y < by + settings.close_sz) {
             client_close(c);
             return;
         }
         /* maximize button */
-        bx -= CLOSE_SZ + 2;
-        if (e->x >= bx && e->x < bx + CLOSE_SZ &&
-            e->y >= by && e->y < by + CLOSE_SZ) {
+        bx -= settings.close_sz + 2;
+        if (e->x >= bx && e->x < bx + settings.close_sz &&
+            e->y >= by && e->y < by + settings.close_sz) {
             client_max(c);
             return;
         }
         /* minimize button */
-        bx -= CLOSE_SZ + 2;
-        if (e->x >= bx && e->x < bx + CLOSE_SZ &&
-            e->y >= by && e->y < by + CLOSE_SZ) {
+        bx -= settings.close_sz + 2;
+        if (e->x >= bx && e->x < bx + settings.close_sz &&
+            e->y >= by && e->y < by + settings.close_sz) {
             client_min(c);
             return;
         }
@@ -458,11 +458,11 @@ void wm_motion(XMotionEvent *e) {
             nh = resize_orig_h - (e->y_root - resize_start_y);
             ny = resize_orig_y + (e->y_root - resize_start_y);
         }
-        if (nw < MIN_W) { nw = MIN_W; if (resize_edge & EDGE_LEFT) nx = resize_orig_x + resize_orig_w - MIN_W; }
-        if (nh < MIN_H) { nh = MIN_H; if (resize_edge & EDGE_TOP) ny = resize_orig_y + resize_orig_h - MIN_H; }
+        if (nw < settings.min_w) { nw = settings.min_w; if (resize_edge & EDGE_LEFT) nx = resize_orig_x + resize_orig_w - settings.min_w; }
+        if (nh < settings.min_h) { nh = settings.min_h; if (resize_edge & EDGE_TOP) ny = resize_orig_y + resize_orig_h - settings.min_h; }
         c->w = nw; c->h = nh; c->x = nx; c->y = ny;
         XMoveResizeWindow(dpy, c->frame, nx, ny,
-            nw + 2 * BORDER_W, nh + TITLE_H + 2 * BORDER_W);
+            nw + 2 * settings.border_w, nh + settings.title_h + 2 * settings.border_w);
         XResizeWindow(dpy, c->win, nw, nh);
         frame_draw(c);
     } else if (dragging && drag_c) {
@@ -506,23 +506,23 @@ void wm_motion(XMotionEvent *e) {
                 edge = wm_edge_detect(c, wx, wy);
                 if (edge) {
                     wm_set_frame_cursor(c, edge);
-                } else if (wy >= BORDER_W && wy < BORDER_W + TITLE_H) {
+                } else if (wy >= settings.border_w && wy < settings.border_w + settings.title_h) {
                     /* in title bar - check if over a button */
                     int bx, by_;
-                    by_ = BORDER_W + (TITLE_H - CLOSE_SZ) / 2;
-                    if (wy >= by_ && wy < by_ + CLOSE_SZ) {
-                        bx = BORDER_W + c->w - CLOSE_SZ - 4;
-                        if (wx >= bx && wx < bx + CLOSE_SZ) {
+                    by_ = settings.border_w + (settings.title_h - settings.close_sz) / 2;
+                    if (wy >= by_ && wy < by_ + settings.close_sz) {
+                        bx = settings.border_w + c->w - settings.close_sz - 4;
+                        if (wx >= bx && wx < bx + settings.close_sz) {
                             XDefineCursor(dpy, c->frame, pointer_cursor);
                             return;
                         }
-                        bx -= CLOSE_SZ + 2;
-                        if (wx >= bx && wx < bx + CLOSE_SZ) {
+                        bx -= settings.close_sz + 2;
+                        if (wx >= bx && wx < bx + settings.close_sz) {
                             XDefineCursor(dpy, c->frame, pointer_cursor);
                             return;
                         }
-                        bx -= CLOSE_SZ + 2;
-                        if (wx >= bx && wx < bx + CLOSE_SZ) {
+                        bx -= settings.close_sz + 2;
+                        if (wx >= bx && wx < bx + settings.close_sz) {
                             XDefineCursor(dpy, c->frame, pointer_cursor);
                             return;
                         }

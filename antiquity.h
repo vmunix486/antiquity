@@ -41,6 +41,15 @@
 #define MIN_W        100
 #define MIN_H        60
 
+typedef struct {
+    int border_w;
+    int title_h;
+    int panel_h;
+    int close_sz;
+    int min_w;
+    int min_h;
+} Settings;
+
 #ifdef _DEBUG
 #define DBG0(msg)          fprintf(stderr, "DBG: " msg "\n")
 #define DBG(fmt, ...)      fprintf(stderr, "DBG: " fmt "\n", __VA_ARGS__)
@@ -75,6 +84,7 @@ extern XFontStruct *font;
 extern GC gc;
 extern Client *clients;
 extern Client *focused;
+extern Settings settings;
 
 /* atoms */
 extern Atom a_wm_protos, a_wm_delete, a_wm_take_focus;
@@ -148,5 +158,6 @@ void ui_panel_add(Client *c);
 void ui_panel_del(Client *c);
 void ui_panel_rename(Client *c);
 void menu_load(const char *path);
+void options_load(const char *path);
 
 #endif

@@ -15,3 +15,4 @@ Antiquity is a simple X11 window manager using X11 Athena widgets that I've been
  - Resizing windows by dragging and pulling on window corners
  - Minimize and Maximize buttons
  - Window Borders
+ - Changeable settings

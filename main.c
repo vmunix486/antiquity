@@ -15,6 +15,8 @@ GC gc;
 Client *clients = NULL;
 Client *focused = NULL;
 
+Settings settings = { BORDER_W, TITLE_H, PANEL_H, CLOSE_SZ, MIN_W, MIN_H };
+
 Atom a_wm_protos, a_wm_delete, a_wm_take_focus;
 
 unsigned long c_panel_bg, c_panel_fg;
@@ -159,6 +161,34 @@ int main(int argc, char **argv) {
     wm_init();
     /* switch to lenient error handler */
     XSetErrorHandler(xerror_handler);
+
+    /* load options: env var, ~/.antiquity, /etc, same dir as binary */
+    {
+        char path[512];
+        char *home = getenv("HOME");
+        const char *env;
+        FILE *f;
+        int loaded = 0;
+
+        env = getenv("ANTIQUITY_OPTIONS");
+        if (env) {
+            options_load(env);
+            loaded = 1;
+        }
+        if (!loaded && home) {
+            sprintf(path, "%s/.antiquity/options.conf", home);
+            f = fopen(path, "r");
+            if (f) { fclose(f); options_load(path); loaded = 1; }
+        }
+        if (!loaded) {
+            f = fopen("/etc/antiquity/options.conf", "r");
+            if (f) { fclose(f); options_load("/etc/antiquity/options.conf"); loaded = 1; }
+        }
+        if (!loaded) {
+            f = fopen("options.conf", "r");
+            if (f) { fclose(f); options_load("options.conf"); }
+        }
+    }
 
     /* find menu config: env var, ~/.antiquity, /etc, same dir as binary */
     cfg = getenv("ANTIQUITY_MENU");
