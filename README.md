@@ -1,7 +1,7 @@
 # antiquity
 
-<img width="768" alt="antiquity" src="https://github.com/user-attachments/assets/369475b3-ef74-4341-9620-fc960c6d8574" />
-<br>An older version of Antiquity running on Debian 3.1 on a 386
+<img width="768" alt="Monitor_1_20260809-083439-750" src="https://github.com/user-attachments/assets/2fd7a372-cce9-4ff0-ace6-b4cfa31680f7" />
+<br><span style="font-size:0.5em;">Antiquity running on Debian 3.1 on a 40mhz 386DX with 64mb of RAM and X11R6. Pictured with many programs such as [neofetch](https://github.com/dylanaraps/neofetch), [inpviewer-x11](https://github.com/vmunix486/inp), and a few X11 programs such as xedit, xeyes, xload, xlogo, and xcalc, on top of feh showing the [background picture.](https://slow.c2dthinkcentre.com/etcfiles/testimages/png/640x480/reimu-640x480.png)</span>
 <br><br>
 Antiquity is a simple X11 window manager using X11 Athena widgets that I've been thinking about making for a while. It's inspired by Windows 9x/NT4, and also IceWM, JWM, and FVWM95.
 
