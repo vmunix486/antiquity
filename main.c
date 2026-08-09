@@ -15,7 +15,8 @@ GC gc;
 Client *clients = NULL;
 Client *focused = NULL;
 
-Settings settings = { BORDER_W, TITLE_H, PANEL_H, CLOSE_SZ, MIN_W, MIN_H, 0 };
+Settings settings = { BORDER_W, TITLE_H, PANEL_H, CLOSE_SZ, MIN_W, MIN_H, 0, 1 };
+Colors colors = { "#b0b0b0", "#000000", "#000080", "#b0b0b0", "#ffffff", "#808080" };
 
 Atom a_wm_protos, a_wm_delete, a_wm_take_focus;
 
@@ -93,6 +94,49 @@ static unsigned long alloc_color(const char *name) {
     return BlackPixel(dpy, screen);
 }
 
+static int hex_digit(char ch) {
+    if (ch >= '0' && ch <= '9') return ch - '0';
+    if (ch >= 'A' && ch <= 'F') return ch - 'A' + 10;
+    if (ch >= 'a' && ch <= 'f') return ch - 'a' + 10;
+    return -1;
+}
+
+static unsigned long parse_hex_color(const char *hex) {
+    int r, g, b, a;
+    int len, i, val;
+    unsigned long pixel;
+
+    if (!hex || hex[0] != '#') goto fallback;
+    len = 0;
+    while (hex[len + 1]) len++;
+    if (len != 6 && len != 8) goto fallback;
+
+    r = g = b = 0; a = 255;
+    for (i = 1; i <= len; i++) {
+        val = hex_digit(hex[i]);
+        if (val < 0) goto fallback;
+        switch (i) {
+        case 1: r = val << 4; break;
+        case 2: r |= val; break;
+        case 3: g = val << 4; break;
+        case 4: g |= val; break;
+        case 5: b = val << 4; break;
+        case 6: b |= val; break;
+        case 7: a = val << 4; break;
+        case 8: a |= val; break;
+        }
+    }
+
+    if (!settings.alpha) a = 255;
+
+    pixel = ((unsigned long)a << 24) | ((unsigned long)r << 16) |
+            ((unsigned long)g << 8) | (unsigned long)b;
+    return pixel;
+
+fallback:
+    return alloc_color("#808080");
+}
+
 static void reap(int sig) {
     (void)sig;
     while (waitpid(-1, NULL, WNOHANG) > 0)
@@ -146,15 +190,6 @@ int main(int argc, char **argv) {
         gc = XCreateGC(dpy, root, GCFont, &gv);
     }
 
-    c_panel_bg   = alloc_color("#b0b0b0");
-    c_panel_fg   = alloc_color("#000000");
-    c_title_on   = alloc_color("#000080");
-    c_title_off  = alloc_color("#b0b0b0");
-    c_title_fg   = alloc_color("#ffffff");
-    c_border     = alloc_color("#808080");
-    c_white      = alloc_color("#ffffff");
-    c_black      = alloc_color("#000000");
-
     a_wm_protos     = XInternAtom(dpy, "WM_PROTOCOLS", False);
     a_wm_delete     = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
     a_wm_take_focus = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
@@ -192,6 +227,44 @@ int main(int argc, char **argv) {
             if (f) { fclose(f); options_load("options.ini"); }
         }
     }
+
+    /* load colors: env var, ~/.antiquity, /etc, same dir as binary */
+    {
+        char path[512];
+        char *home = getenv("HOME");
+        const char *env;
+        FILE *f;
+        int loaded = 0;
+
+        env = getenv("ANTIQUITY_COLORS");
+        if (env) {
+            colors_load(env);
+            loaded = 1;
+        }
+        if (!loaded && home) {
+            sprintf(path, "%s/.antiquity/colors.ini", home);
+            f = fopen(path, "r");
+            if (f) { fclose(f); colors_load(path); loaded = 1; }
+        }
+        if (!loaded) {
+            f = fopen("/etc/antiquity/colors.ini", "r");
+            if (f) { fclose(f); colors_load("/etc/antiquity/colors.ini"); loaded = 1; }
+        }
+        if (!loaded) {
+            f = fopen("colors.ini", "r");
+            if (f) { fclose(f); colors_load("colors.ini"); }
+        }
+    }
+
+    /* allocate parsed colors */
+    c_panel_bg   = parse_hex_color(colors.panel_bg);
+    c_panel_fg   = parse_hex_color(colors.panel_fg);
+    c_title_on   = parse_hex_color(colors.title_on);
+    c_title_off  = parse_hex_color(colors.title_off);
+    c_title_fg   = parse_hex_color(colors.title_fg);
+    c_border     = parse_hex_color(colors.border);
+    c_white      = alloc_color("#ffffff");
+    c_black      = alloc_color("#000000");
 
     /* find menu config: env var, ~/.antiquity, /etc, same dir as binary */
     cfg = getenv("ANTIQUITY_MENU");

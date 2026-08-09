@@ -4,6 +4,63 @@
 
 #include "antiquity.h"
 
+/* --- color config loader --- */
+
+void colors_load(const char *path) {
+    FILE *f;
+    char line[MAX_LINE];
+    int in_colors = 0;
+    char *home;
+    char buf[512];
+    const char *p = path;
+
+    /* expand ~ */
+    if (p[0] == '~' && p[1] == '/') {
+        home = getenv("HOME");
+        if (home) {
+            sprintf(buf, "%s%s", home, p + 1);
+            p = buf;
+        }
+    }
+
+    f = fopen(p, "r");
+    if (!f) return;
+
+    while (fgets(line, sizeof(line), f)) {
+        char *s = line, *eq;
+        while (*s == ' ' || *s == '\t') s++;
+        if (*s == '\n' || *s == '\0' || *s == '#' || *s == ';') continue;
+        if (*s == '[') {
+            in_colors = (strncmp(s, "[colors]", 8) == 0);
+            continue;
+        }
+        if (!in_colors) continue;
+        eq = strchr(s, '=');
+        if (!eq) continue;
+        {
+            char key[MAX_NAME] = {0};
+            char val[MAX_NAME] = {0};
+            char *a = s, *b = eq + 1;
+            int i = 0;
+            while (a < eq && *a != ' ' && *a != '\t' && i < MAX_NAME - 1)
+                key[i++] = *a++;
+            i = 0;
+            while (*b == ' ' || *b == '\t') b++;
+            while (*b && *b != '\n' && *b != '\r' && i < MAX_NAME - 1)
+                val[i++] = *b++;
+            while (i > 0 && (val[i-1] == ' ' || val[i-1] == '\t'))
+                val[--i] = '\0';
+            if (strcmp(key, "panel_bg") == 0) strcpy(colors.panel_bg, val);
+            else if (strcmp(key, "panel_fg") == 0) strcpy(colors.panel_fg, val);
+            else if (strcmp(key, "title_on") == 0) strcpy(colors.title_on, val);
+            else if (strcmp(key, "title_off") == 0) strcpy(colors.title_off, val);
+            else if (strcmp(key, "title_fg") == 0) strcpy(colors.title_fg, val);
+            else if (strcmp(key, "border") == 0) strcpy(colors.border, val);
+        }
+    }
+    fclose(f);
+}
+
 /* --- INI-style config parser --- */
 
 void menu_load(const char *path) {
@@ -122,6 +179,7 @@ void options_load(const char *path) {
             else if (strcmp(key, "min_width") == 0) settings.min_w = atoi(val);
             else if (strcmp(key, "min_height") == 0) settings.min_h = atoi(val);
             else if (strcmp(key, "outline_move") == 0) settings.outline_move = atoi(val);
+            else if (strcmp(key, "alpha") == 0) settings.alpha = atoi(val);
         }
     }
     fclose(f);

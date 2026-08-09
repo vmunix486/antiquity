@@ -49,7 +49,17 @@ typedef struct {
     int min_w;
     int min_h;
     int outline_move;
+    int alpha;
 } Settings;
+
+typedef struct {
+    char panel_bg[MAX_NAME];
+    char panel_fg[MAX_NAME];
+    char title_on[MAX_NAME];
+    char title_off[MAX_NAME];
+    char title_fg[MAX_NAME];
+    char border[MAX_NAME];
+} Colors;
 
 #ifdef _DEBUG
 #define DBG0(msg)          fprintf(stderr, "DBG: " msg "\n")
@@ -86,6 +96,7 @@ extern GC gc;
 extern Client *clients;
 extern Client *focused;
 extern Settings settings;
+extern Colors colors;
 
 /* atoms */
 extern Atom a_wm_protos, a_wm_delete, a_wm_take_focus;
@@ -162,6 +173,7 @@ void ui_panel_add(Client *c);
 void ui_panel_del(Client *c);
 void ui_panel_rename(Client *c);
 void menu_load(const char *path);
+void colors_load(const char *path);
 void options_load(const char *path);
 
 #endif
