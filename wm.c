@@ -158,6 +158,10 @@ Client *client_add(Window w) {
     XMapWindow(dpy, w);
     XMapWindow(dpy, c->frame);
 
+    /* grab button1 on client so WM sees clicks for focus */
+    XGrabButton(dpy, Button1, AnyModifier, w, True,
+        ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None);
+
     c->next = clients;
     clients = c;
 
@@ -381,7 +385,14 @@ void wm_btn(XButtonEvent *e) {
     }
 
     c = client_by_frame(e->window);
-    if (!c) return;
+    if (!c) {
+        c = client_by_win(e->window);
+        if (c) {
+            focus_set(c);
+            XAllowEvents(dpy, ReplayPointer, CurrentTime);
+        }
+        return;
+    }
     focus_set(c);
 
     /* check for resize edge/corner anywhere in the frame */
