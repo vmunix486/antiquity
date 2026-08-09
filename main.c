@@ -15,7 +15,7 @@ GC gc;
 Client *clients = NULL;
 Client *focused = NULL;
 
-Settings settings = { BORDER_W, TITLE_H, PANEL_H, CLOSE_SZ, MIN_W, MIN_H, 0, 1 };
+Settings settings = { BORDER_W, TITLE_H, PANEL_H, CLOSE_SZ, MIN_W, MIN_H, 0, 1, 1, 1, 1, 1 };
 Colors colors = { "#b0b0b0", "#000000", "#000080", "#b0b0b0", "#ffffff", "#808080" };
 
 Atom a_wm_protos, a_wm_delete, a_wm_take_focus;
@@ -29,6 +29,9 @@ Widget menu_shell;
 int menu_up = 0;
 Widget lsh_shell, lsh_text;
 int lsh_up = 0;
+
+Widget clock_shell = NULL, clock_time = NULL, clock_date = NULL;
+XtIntervalId clock_timer = 0;
 
 int dragging = 0;
 int resizing = 0;

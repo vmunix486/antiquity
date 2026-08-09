@@ -4,6 +4,8 @@
 
 #include "antiquity.h"
 
+static void clock_timer_cb(XtPointer cd, XtIntervalId *id);
+
 /* --- color config loader --- */
 
 void colors_load(const char *path) {
@@ -180,6 +182,10 @@ void options_load(const char *path) {
             else if (strcmp(key, "min_height") == 0) settings.min_h = atoi(val);
             else if (strcmp(key, "outline_move") == 0) settings.outline_move = atoi(val);
             else if (strcmp(key, "alpha") == 0) settings.alpha = atoi(val);
+            else if (strcmp(key, "show_clock") == 0) settings.show_clock = atoi(val);
+            else if (strcmp(key, "show_date") == 0) settings.show_date = atoi(val);
+            else if (strcmp(key, "hour_24") == 0) settings.hour_24 = atoi(val);
+            else if (strcmp(key, "show_seconds") == 0) settings.show_seconds = atoi(val);
         }
     }
     fclose(f);
@@ -401,17 +407,17 @@ static void start_cb(Widget w, XtPointer cd, XtPointer cal) {
 static void win_btn_cb(Widget w, XtPointer cd, XtPointer cal) {
     Client *c = (Client *)cd;
     (void)w; (void)cal;
-    if (c) {
-        XRaiseWindow(dpy, c->frame);
-        XMapWindow(dpy, c->frame);
-        focus_set(c);
-    }
+    if (!c) return;
+    XRaiseWindow(dpy, c->frame);
+    XMapWindow(dpy, c->frame);
+    focus_set(c);
 }
 
 void ui_panel(void) {
     panel_shell = XtVaAppCreateShell("panel", "Antiquity",
         overrideShellWidgetClass, dpy,
         XtNoverrideRedirect, True,
+        XtNborderWidth, 0,
         XtNwidth, sw,
         XtNheight, settings.panel_h,
         XtNx, 0,
@@ -434,6 +440,93 @@ void ui_panel(void) {
     XtAddCallback(start_btn, XtNcallback, start_cb, NULL);
 
     XtRealizeWidget(panel_shell);
+
+    /* create clock as override shell at right edge of panel */
+    if (settings.show_clock || settings.show_date) {
+        Widget clock_form;
+        int ch = settings.panel_h / 2;
+
+        clock_shell = XtVaAppCreateShell("clock", "Antiquity",
+            overrideShellWidgetClass, dpy,
+            XtNoverrideRedirect, True,
+            XtNborderWidth, 0,
+            XtNwidth, 150,
+            XtNheight, settings.panel_h,
+            XtNx, sw - 125,
+            XtNy, sh - settings.panel_h,
+            XtNbackground, c_panel_bg,
+            NULL);
+
+        clock_form = XtVaCreateWidget("form", formWidgetClass, clock_shell,
+            XtNbackground, c_panel_bg,
+            NULL);
+
+        clock_time = XtVaCreateManagedWidget("time", labelWidgetClass, clock_form,
+            XtNlabel, "",
+            XtNbackground, c_panel_bg,
+            XtNforeground, c_panel_fg,
+            XtNborderWidth, 0,
+            XtNwidth, 150,
+            XtNheight, ch,
+            NULL);
+
+        clock_date = XtVaCreateManagedWidget("date", labelWidgetClass, clock_form,
+            XtNlabel, "",
+            XtNbackground, c_panel_bg,
+            XtNforeground, c_panel_fg,
+            XtNborderWidth, 0,
+            XtNwidth, 150,
+            XtNheight, ch,
+            XtNfromVert, clock_time,
+            NULL);
+
+        XtManageChild(clock_form);
+        XtRealizeWidget(clock_shell);
+        ui_panel_clock_update();
+        clock_timer = XtAppAddTimeOut(app, 1000, clock_timer_cb, NULL);
+    }
+}
+
+/* --- clock --- */
+
+static void clock_timer_cb(XtPointer cd, XtIntervalId *id) {
+    (void)cd; (void)id;
+    ui_panel_clock_update();
+    clock_timer = XtAppAddTimeOut(app,
+        settings.show_seconds ? 1000 : 60000,
+        clock_timer_cb, NULL);
+}
+
+void ui_panel_clock_update(void) {
+    time_t now;
+    struct tm *tm;
+
+    if (!clock_time || !clock_date) return;
+
+    now = time(NULL);
+    tm = localtime(&now);
+
+    if (settings.show_clock) {
+        char tbuf[32];
+        char *fmt;
+        if (settings.hour_24) {
+            fmt = settings.show_seconds ? "%H:%M:%S" : "%H:%M";
+        } else {
+            fmt = settings.show_seconds ? "%I:%M:%S %p" : "%I:%M %p";
+        }
+        strftime(tbuf, sizeof(tbuf), fmt, tm);
+        XtVaSetValues(clock_time, XtNlabel, tbuf, NULL);
+    } else {
+        XtVaSetValues(clock_time, XtNlabel, "", NULL);
+    }
+
+    if (settings.show_date) {
+        char dbuf[32];
+        strftime(dbuf, sizeof(dbuf), "%a %b %d", tm);
+        XtVaSetValues(clock_date, XtNlabel, dbuf, NULL);
+    } else {
+        XtVaSetValues(clock_date, XtNlabel, "", NULL);
+    }
 }
 
 void ui_panel_add(Client *c) {

@@ -18,3 +18,4 @@ Antiquity is a simple X11 window manager using X11 Athena widgets that I've been
  - Changeable settings with `options.ini`
  - Optional window outlining on window move and resize
  - Changable color palette with `colors.ini`
+ - Digital-style clock and date in the taskbar (12,24 hour, seconds)

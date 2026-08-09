@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <time.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -50,6 +51,10 @@ typedef struct {
     int min_h;
     int outline_move;
     int alpha;
+    int show_clock;
+    int show_date;
+    int hour_24;
+    int show_seconds;
 } Settings;
 
 typedef struct {
@@ -113,6 +118,10 @@ extern int menu_up;
 extern Widget lsh_shell, lsh_text;
 extern int lsh_up;
 
+/* clock */
+extern Widget clock_shell, clock_time, clock_date;
+extern XtIntervalId clock_timer;
+
 /* drag/resize state */
 extern int dragging;
 extern int resizing;
@@ -172,6 +181,7 @@ void ui_launcher_exec(void);
 void ui_panel_add(Client *c);
 void ui_panel_del(Client *c);
 void ui_panel_rename(Client *c);
+void ui_panel_clock_update(void);
 void menu_load(const char *path);
 void colors_load(const char *path);
 void options_load(const char *path);

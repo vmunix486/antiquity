@@ -1,6 +1,5 @@
 # TODO
 
- - Add current time and date in the right of the taskbar (12 and 24 hour time)
  - See if there are any optimizations (it's not slow, it's just that optimization is always good.)
  - Add support for dragging windows around with Alt+Left Mouse
  - Add support for window switching with Alt+Tab
@@ -9,3 +8,4 @@
  - Once finished: Compare against other small and fast window managers (FVWM, IceWM, JWM, TWM)
  - Add window snapping (to sides and edges of the screen, and to the sides of other windows as well. Can be turned on and off in the settings)
  - Add support for installation in the Makefile
+ - Make taskbar always on top of every window
