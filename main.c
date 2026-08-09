@@ -179,17 +179,17 @@ int main(int argc, char **argv) {
             loaded = 1;
         }
         if (!loaded && home) {
-            sprintf(path, "%s/.antiquity/options.conf", home);
+            sprintf(path, "%s/.antiquity/options.ini", home);
             f = fopen(path, "r");
             if (f) { fclose(f); options_load(path); loaded = 1; }
         }
         if (!loaded) {
-            f = fopen("/etc/antiquity/options.conf", "r");
-            if (f) { fclose(f); options_load("/etc/antiquity/options.conf"); loaded = 1; }
+            f = fopen("/etc/antiquity/options.ini", "r");
+            if (f) { fclose(f); options_load("/etc/antiquity/options.ini"); loaded = 1; }
         }
         if (!loaded) {
-            f = fopen("options.conf", "r");
-            if (f) { fclose(f); options_load("options.conf"); }
+            f = fopen("options.ini", "r");
+            if (f) { fclose(f); options_load("options.ini"); }
         }
     }
 
@@ -204,24 +204,24 @@ int main(int argc, char **argv) {
         FILE *f;
 
         DBG0("config: no ANTIQUITY_MENU env, searching...");
-        /* try ~/.antiquity/menu.conf */
+        /* try ~/.antiquity/menu.ini */
         if (home) {
-            sprintf(path, "%s/.antiquity/menu.conf", home);
+            sprintf(path, "%s/.antiquity/menu.ini", home);
             DBG("config: trying %s", path);
             f = fopen(path, "r");
             if (f) { fclose(f); menu_load(path); }
         }
-        /* try /etc/antiquity/menu.conf */
+            /* try /etc/antiquity/menu.ini */
         if (menu_count == 0) {
-            DBG0("config: trying /etc/antiquity/menu.conf");
-            f = fopen("/etc/antiquity/menu.conf", "r");
-            if (f) { fclose(f); menu_load("/etc/antiquity/menu.conf"); }
+            DBG0("config: trying /etc/antiquity/menu.ini");
+            f = fopen("/etc/antiquity/menu.ini", "r");
+            if (f) { fclose(f); menu_load("/etc/antiquity/menu.ini"); }
         }
-        /* try ./menu.conf */
+            /* try ./menu.ini */
         if (menu_count == 0) {
-            DBG0("config: trying ./menu.conf");
-            f = fopen("menu.conf", "r");
-            if (f) { fclose(f); menu_load("menu.conf"); }
+            DBG0("config: trying ./menu.ini");
+            f = fopen("menu.ini", "r");
+            if (f) { fclose(f); menu_load("menu.ini"); }
         }
         DBG("config: final menu_count=%d", menu_count);
     }
