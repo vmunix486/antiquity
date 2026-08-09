@@ -8,3 +8,4 @@
  - Add right click menu on window bars and in taskbar
  - Once finished: Compare against other small and fast window managers (FVWM, IceWM, JWM, TWM)
  - Add window snapping (to sides and edges of the screen, and to the sides of other windows as well. Can be turned on and off in the settings)
+ - Add support for installation in the Makefile

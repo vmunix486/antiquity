@@ -7,7 +7,7 @@ Antiquity is a simple X11 window manager using X11 Athena widgets that I've been
 
 # Features
 
- - C89/ANSI C for portability
+ - C89/ANSI C for portability (tested with gcc, clang, tcc, pcc, chibicc, should work with any compiler)
  - Bottom task bar with program list
  - Start menu that takes INI file input (`menu.ini`)
  - Quick program launcher when you press Windows key (or Meta key if you're unc)
