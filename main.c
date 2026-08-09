@@ -15,7 +15,7 @@ GC gc;
 Client *clients = NULL;
 Client *focused = NULL;
 
-Settings settings = { BORDER_W, TITLE_H, PANEL_H, CLOSE_SZ, MIN_W, MIN_H };
+Settings settings = { BORDER_W, TITLE_H, PANEL_H, CLOSE_SZ, MIN_W, MIN_H, 0 };
 
 Atom a_wm_protos, a_wm_delete, a_wm_take_focus;
 
@@ -39,6 +39,9 @@ int resize_orig_w = 0, resize_orig_h = 0;
 int resize_edge = 0;
 Cursor resize_cursor = None;
 Cursor pointer_cursor = None;
+GC outline_gc = NULL;
+int outline_on = 0;
+int outline_x = 0, outline_y = 0, outline_w = 0, outline_h = 0;
 
 MenuItem menu_items[MAX_MENU];
 int menu_count = 0;

@@ -93,6 +93,15 @@ void wm_init(void) {
 
     resize_cursor = wm_edge_cursor(EDGE_BR);
     pointer_cursor = XCreateFontCursor(dpy, 68); /* XC_left_ptr */
+
+    /* outline GC for move/resize wireframe */
+    {
+        XGCValues gv;
+        gv.function = GXxor;
+        gv.foreground = c_white;
+        gv.line_width = 2;
+        outline_gc = XCreateGC(dpy, root, GCFunction | GCForeground | GCLineWidth, &gv);
+    }
 }
 
 /* client list */
@@ -387,6 +396,15 @@ void wm_btn(XButtonEvent *e) {
         resize_orig_y = c->y;
         resize_orig_w = c->w;
         resize_orig_h = c->h;
+        if (settings.outline_move) {
+            outline_on = 1;
+            outline_x = c->x;
+            outline_y = c->y;
+            outline_w = c->w + 2 * settings.border_w;
+            outline_h = c->h + settings.title_h + 2 * settings.border_w;
+            XDrawRectangle(dpy, root, outline_gc,
+                outline_x, outline_y, outline_w - 1, outline_h - 1);
+        }
         XGrabPointer(dpy, c->frame, True,
             ButtonReleaseMask | PointerMotionMask,
             GrabModeAsync, GrabModeAsync,
@@ -425,6 +443,15 @@ void wm_btn(XButtonEvent *e) {
         drag_c = c;
         drag_ox = e->x_root - c->x;
         drag_oy = e->y_root - c->y;
+        if (settings.outline_move) {
+            outline_on = 1;
+            outline_x = c->x;
+            outline_y = c->y;
+            outline_w = c->w + 2 * settings.border_w;
+            outline_h = c->h + settings.title_h + 2 * settings.border_w;
+            XDrawRectangle(dpy, root, outline_gc,
+                outline_x, outline_y, outline_w - 1, outline_h - 1);
+        }
         XGrabPointer(dpy, c->frame, True,
             ButtonReleaseMask | PointerMotionMask,
             GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
@@ -460,15 +487,37 @@ void wm_motion(XMotionEvent *e) {
         }
         if (nw < settings.min_w) { nw = settings.min_w; if (resize_edge & EDGE_LEFT) nx = resize_orig_x + resize_orig_w - settings.min_w; }
         if (nh < settings.min_h) { nh = settings.min_h; if (resize_edge & EDGE_TOP) ny = resize_orig_y + resize_orig_h - settings.min_h; }
-        c->w = nw; c->h = nh; c->x = nx; c->y = ny;
-        XMoveResizeWindow(dpy, c->frame, nx, ny,
-            nw + 2 * settings.border_w, nh + settings.title_h + 2 * settings.border_w);
-        XResizeWindow(dpy, c->win, nw, nh);
-        frame_draw(c);
+        if (settings.outline_move) {
+            /* erase old outline */
+            XDrawRectangle(dpy, root, outline_gc,
+                outline_x, outline_y, outline_w - 1, outline_h - 1);
+            outline_x = nx;
+            outline_y = ny;
+            outline_w = nw + 2 * settings.border_w;
+            outline_h = nh + settings.title_h + 2 * settings.border_w;
+            /* draw new outline */
+            XDrawRectangle(dpy, root, outline_gc,
+                outline_x, outline_y, outline_w - 1, outline_h - 1);
+        } else {
+            c->w = nw; c->h = nh; c->x = nx; c->y = ny;
+            XMoveResizeWindow(dpy, c->frame, nx, ny,
+                nw + 2 * settings.border_w, nh + settings.title_h + 2 * settings.border_w);
+            XResizeWindow(dpy, c->win, nw, nh);
+            frame_draw(c);
+        }
     } else if (dragging && drag_c) {
-        drag_c->x = e->x_root - drag_ox;
-        drag_c->y = e->y_root - drag_oy;
-        XMoveWindow(dpy, drag_c->frame, drag_c->x, drag_c->y);
+        if (settings.outline_move) {
+            XDrawRectangle(dpy, root, outline_gc,
+                outline_x, outline_y, outline_w - 1, outline_h - 1);
+            outline_x = e->x_root - drag_ox;
+            outline_y = e->y_root - drag_oy;
+            XDrawRectangle(dpy, root, outline_gc,
+                outline_x, outline_y, outline_w - 1, outline_h - 1);
+        } else {
+            drag_c->x = e->x_root - drag_ox;
+            drag_c->y = e->y_root - drag_oy;
+            XMoveWindow(dpy, drag_c->frame, drag_c->x, drag_c->y);
+        }
     }
 
     /* when button is held and pointer is near a client edge, start resize */
@@ -492,6 +541,15 @@ void wm_motion(XMotionEvent *e) {
                     resize_orig_y = c->y;
                     resize_orig_w = c->w;
                     resize_orig_h = c->h;
+                    if (settings.outline_move) {
+                        outline_on = 1;
+                        outline_x = c->x;
+                        outline_y = c->y;
+                        outline_w = c->w + 2 * settings.border_w;
+                        outline_h = c->h + settings.title_h + 2 * settings.border_w;
+                        XDrawRectangle(dpy, root, outline_gc,
+                            outline_x, outline_y, outline_w - 1, outline_h - 1);
+                    }
                     XGrabPointer(dpy, c->frame, True,
                         ButtonReleaseMask | PointerMotionMask,
                         GrabModeAsync, GrabModeAsync,
@@ -559,11 +617,38 @@ void wm_motion(XMotionEvent *e) {
 void wm_btnup(XButtonEvent *e) {
     (void)e;
     if (resizing) {
+        DBG("wm_btnup: resizing, outline_on=%d", outline_on);
+        if (outline_on && drag_c) {
+            /* erase outline, apply actual resize */
+            DBG("wm_btnup: erase outline (%d,%d %dx%d)", outline_x, outline_y, outline_w, outline_h);
+            XDrawRectangle(dpy, root, outline_gc,
+                outline_x, outline_y, outline_w - 1, outline_h - 1);
+            drag_c->x = outline_x;
+            drag_c->y = outline_y;
+            drag_c->w = outline_w - 2 * settings.border_w;
+            drag_c->h = outline_h - settings.title_h - 2 * settings.border_w;
+            DBG("wm_btnup: apply resize (%d,%d %dx%d)",
+                drag_c->x, drag_c->y, drag_c->w, drag_c->h);
+            XMoveResizeWindow(dpy, drag_c->frame, outline_x, outline_y,
+                outline_w, outline_h);
+            XResizeWindow(dpy, drag_c->win, drag_c->w, drag_c->h);
+            frame_draw(drag_c);
+            outline_on = 0;
+        }
         resizing = 0;
         resize_edge = EDGE_NONE;
         drag_c = NULL;
         XUngrabPointer(dpy, CurrentTime);
     } else if (dragging) {
+        if (outline_on && drag_c) {
+            /* erase outline, apply actual move */
+            XDrawRectangle(dpy, root, outline_gc,
+                outline_x, outline_y, outline_w - 1, outline_h - 1);
+            drag_c->x = outline_x;
+            drag_c->y = outline_y;
+            XMoveWindow(dpy, drag_c->frame, drag_c->x, drag_c->y);
+            outline_on = 0;
+        }
         dragging = 0;
         drag_c = NULL;
         XUngrabPointer(dpy, CurrentTime);

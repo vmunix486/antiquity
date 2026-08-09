@@ -48,6 +48,7 @@ typedef struct {
     int close_sz;
     int min_w;
     int min_h;
+    int outline_move;
 } Settings;
 
 #ifdef _DEBUG
@@ -112,6 +113,9 @@ extern int resize_orig_w, resize_orig_h;
 extern int resize_edge;
 extern Cursor resize_cursor;
 extern Cursor pointer_cursor;
+extern GC outline_gc;
+extern int outline_on;
+extern int outline_x, outline_y, outline_w, outline_h;
 
 /* menu config */
 extern MenuItem menu_items[];
